@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, PlusIcon, TrashIcon } from './Svgs.jsx';
 import { usePhotosData } from '../services/storageService.jsx';
 
 export const PhotoSlider = () => {
-  const { photos, addPhotoFiles, removePhoto, status } = usePhotosData();
+  const { photos, addPhotoFiles, removePhoto } = usePhotosData();
   const [idx, setIdx] = React.useState(0);
   const [dragging, setDragging] = React.useState(false);
   const [dragOffset, setDragOffset] = React.useState(0);
@@ -101,7 +101,7 @@ export const PhotoSlider = () => {
   return (
     <div className="photos-section">
       <input id={inputId} className="photo-input" type="file" accept="image/*" multiple onChange={onPick} />
-      <div className="data-status">{uploading ? 'Fotoğraf yükleniyor...' : status}</div>
+      {uploading && <div className="data-status">Fotoğraf yükleniyor...</div>}
       <div
         className="slider-viewport"
         onPointerDown={onPointerDown}

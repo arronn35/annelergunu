@@ -22,7 +22,7 @@ const initials = (name) => {
 };
 
 export const NotesWall = () => {
-  const { notes, addNote, removeNote, status } = useNotesData();
+  const { notes, addNote, removeNote } = useNotesData();
   const [name, setName] = React.useState('');
   const [text, setText] = React.useState('');
   const [submitting, setSubmitting] = React.useState(false);
@@ -65,8 +65,6 @@ export const NotesWall = () => {
           </button>
         </div>
       </form>
-
-      <div className="data-status">{status}</div>
 
       <div className="notes-grid">
         {notes.length === 0 && (

@@ -179,11 +179,11 @@ export const App = () => {
           <div className={`hero ${heroFading ? 'fading' : ''}`}>
             <div className="hero-eyebrow">Anneler Günü'ne özel · 2026</div>
             <h1 className="hero-title">
-              Annelik sana çok yakıştı, biricik <span className="amp">ablacığım</span>
+              Annelik sana çok yakışacak, <span className="amp">canım ablam.</span>
             </h1>
             <p className="hero-sub">
-              Sevgili Merve, içindeki minik kalbin sana minik bir sürprizi var.
-              Hediyeyi açtığında onu duyacaksın.
+              Sevgili Merve, bu sayfa minik prensesinin sana ilk fısıltısını,
+              ona bırakacağın anıları saklayacak.
             </p>
 
             <div
@@ -209,11 +209,11 @@ export const App = () => {
             <div className="hero" style={{ minHeight: '70vh', paddingBottom: 40 }}>
               <div className="hero-eyebrow">Anneler Günü'ne özel · 2026</div>
               <h1 className="hero-title">
-                Annelik sana çok yakıştı, biricik <span className="amp">ablacığım</span>
+                Annelik sana çok yakışacak, <span className="amp">canım ablam.</span>
               </h1>
               <p className="hero-sub">
                 Sevgili Merve, bu sayfa minik prensesinin sana ilk fısıltısını,
-                ona bırakacağın anıları ve sevenlerinin satırlarını saklıyor.
+                ona bırakacağın anıları saklayacak.
               </p>
               <div className="scroll-cue">aşağı kaydır ↓</div>
             </div>
