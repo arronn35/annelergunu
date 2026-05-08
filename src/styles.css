@@ -530,6 +530,14 @@
     will-change: transform;
   }
   .slider-track.dragging { transition: none; }
+  .photo-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
   .photo-card {
     flex: 0 0 clamp(260px, 36vw, 460px);
     aspect-ratio: 3 / 4;

@@ -10,7 +10,7 @@ export const PhotoSlider = () => {
   const [uploading, setUploading] = React.useState(false);
   const trackRef = React.useRef(null);
   const startX = React.useRef(0);
-  const fileRef = React.useRef(null);
+  const inputId = React.useId();
 
   const items = React.useMemo(() => [{ kind: 'add' }, ...photos.map((p, i) => ({ kind: 'photo', ...p, i }))], [photos]);
 
@@ -30,7 +30,7 @@ export const PhotoSlider = () => {
   };
 
   const onPointerDown = (e) => {
-    if (e.target.closest('button')) return;
+    if (e.target.closest('button, label, input, .add-card')) return;
     setDragging(true);
     startX.current = e.clientX || (e.touches && e.touches[0].clientX) || 0;
     if (trackRef.current) trackRef.current.setPointerCapture?.(e.pointerId);
@@ -70,7 +70,7 @@ export const PhotoSlider = () => {
 
   return (
     <div className="photos-section">
-      <input ref={fileRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={onPick} />
+      <input id={inputId} className="photo-input" type="file" accept="image/*" multiple onChange={onPick} />
       <div className="data-status">{uploading ? 'Fotoğraf yükleniyor...' : status}</div>
       <div
         className="slider-viewport"
@@ -89,11 +89,11 @@ export const PhotoSlider = () => {
             const active = i === idx;
             if (it.kind === 'add') {
               return (
-                <div key="add" className={`photo-card add-card ${active ? 'is-active' : ''}`} onClick={() => fileRef.current?.click()}>
+                <label key="add" htmlFor={inputId} className={`photo-card add-card ${active ? 'is-active' : ''}`}>
                   <div className="add-card-icon"><PlusIcon size={28} /></div>
                   <div className="add-card-title">Fotoğraf ekle</div>
-                  <div className="add-card-sub">Bebeğin ilk anılarını buraya yükle</div>
-                </div>
+                  <div className="add-card-sub">Mobilde galeriden, webde dosyalarından seç</div>
+                </label>
               );
             }
             return (
