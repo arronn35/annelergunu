@@ -53,9 +53,12 @@ export const PhotoSlider = () => {
 
   const handleFiles = async (files) => {
     setUploading(true);
-    const added = await addPhotoFiles(files);
-    setUploading(false);
-    if (added) setIdx(items.length + added - 1);
+    try {
+      const added = await addPhotoFiles(files);
+      if (added) setIdx(items.length + added - 1);
+    } finally {
+      setUploading(false);
+    }
   };
 
   const onPick = (e) => {

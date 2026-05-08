@@ -31,10 +31,13 @@ export const NotesWall = () => {
     e.preventDefault();
     if (!name.trim() || !text.trim()) return;
     setSubmitting(true);
-    await addNote({ name, text });
-    setName('');
-    setText('');
-    setSubmitting(false);
+    try {
+      await addNote({ name, text });
+      setName('');
+      setText('');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (

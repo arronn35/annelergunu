@@ -226,7 +226,7 @@ const runMigrationOnce = () => {
 
 export const useNotesData = () => {
   const [notes, setNotes] = React.useState(localNotes);
-  const [status, setStatus] = React.useState(firebaseEnabled ? 'Bağlanıyor...' : 'Yerel demo modu');
+  const [status, setStatus] = React.useState(firebaseEnabled ? 'Firebase bağlanıyor...' : 'Yerel demo modu');
 
   React.useEffect(() => {
     if (!firebaseEnabled || !db) return undefined;
@@ -245,11 +245,11 @@ export const useNotesData = () => {
           .map(normalizeNote);
         setNotes(next);
         writeJson(NOTES_KEY, next);
-        setStatus('Canlı');
+        setStatus('Firebase aktif');
       },
       (error) => {
         console.warn('Notes subscription failed; local fallback is active.', error);
-        setStatus('Yerel yedek mod');
+        setStatus('Firebase okunamadı, yerel yedek aktif');
       },
     );
 
@@ -266,7 +266,9 @@ export const useNotesData = () => {
     if (!note.name || !note.text) return;
 
     try {
+      setStatus('Not kaydediliyor...');
       await createNoteInFirebase(note);
+      setStatus('Firebase aktif');
     } catch {
       enqueue({ type: 'addNote', payload: note });
       setNotes((prev) => {
@@ -274,7 +276,7 @@ export const useNotesData = () => {
         writeJson(NOTES_KEY, next);
         return next;
       });
-      setStatus('Yerel yedek mod');
+      setStatus('Bağlantı yok, not yerel kuyruğa alındı');
     }
   };
 
@@ -287,8 +289,10 @@ export const useNotesData = () => {
     try {
       if (!firebaseEnabled || !db) throw new Error('Firebase is not ready.');
       await updateDoc(doc(db, 'notes', id), { deletedAt: Date.now() });
+      setStatus('Firebase aktif');
     } catch {
       enqueue({ type: 'deleteNote', id });
+      setStatus('Silme işlemi yerel kuyruğa alındı');
     }
   };
 
@@ -299,7 +303,7 @@ export const usePhotosData = () => {
   const [photos, setPhotos] = React.useState(() =>
     localPhotos().map((src, index) => (typeof src === 'string' ? { id: `local-photo-${index}`, src } : src)),
   );
-  const [status, setStatus] = React.useState(firebaseEnabled ? 'Bağlanıyor...' : 'Yerel demo modu');
+  const [status, setStatus] = React.useState(firebaseEnabled ? 'Firebase bağlanıyor...' : 'Yerel demo modu');
 
   React.useEffect(() => {
     if (!firebaseEnabled || !db) return undefined;
@@ -318,11 +322,11 @@ export const usePhotosData = () => {
           .map(normalizePhoto);
         setPhotos(next);
         writeJson(PHOTOS_KEY, next.map((photo) => photo.src));
-        setStatus('Canlı');
+        setStatus('Firebase aktif');
       },
       (error) => {
         console.warn('Photos subscription failed; local fallback is active.', error);
-        setStatus('Yerel yedek mod');
+        setStatus('Firebase okunamadı, yerel yedek aktif');
       },
     );
 
@@ -341,10 +345,12 @@ export const usePhotosData = () => {
 
     for (const file of imageFiles) {
       try {
+        setStatus('Fotoğraf Firebase Storage’a yükleniyor...');
         const photoDoc = await createPhotoFromFile(file);
         added += 1;
         if (!firebaseEnabled) throw new Error('Firebase is not ready.');
         setPhotos((prev) => (prev.some((photo) => photo.id === photoDoc.id) ? prev : [...prev, normalizePhoto({ id: photoDoc.id, data: () => photoDoc })]));
+        setStatus('Firebase aktif');
       } catch {
         const dataUrl = await fileToDataURL(file);
         const localPhoto = { id: makeId('local-photo'), src: dataUrl, ts: Date.now() };
@@ -354,7 +360,7 @@ export const usePhotosData = () => {
           writeJson(PHOTOS_KEY, next.map((photo) => photo.src));
           return next;
         });
-        setStatus('Yerel yedek mod');
+        setStatus('Bağlantı yok, fotoğraf yerel kuyruğa alındı');
         added += 1;
       }
     }
@@ -371,8 +377,10 @@ export const usePhotosData = () => {
     try {
       if (!firebaseEnabled || !db) throw new Error('Firebase is not ready.');
       await updateDoc(doc(db, 'photos', id), { deletedAt: Date.now() });
+      setStatus('Firebase aktif');
     } catch {
       enqueue({ type: 'deletePhoto', id });
+      setStatus('Silme işlemi yerel kuyruğa alındı');
     }
   };
 
