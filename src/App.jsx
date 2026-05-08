@@ -4,8 +4,6 @@ import { FloatingField, PetalsLayer } from './components/FloatingField.jsx';
 import { NotesWall } from './components/NotesWall.jsx';
 import { PhotoSlider } from './components/PhotoSlider.jsx';
 import { CloseIcon, HeartGift, PauseIcon, PlayIcon } from './components/Svgs.jsx';
-import { REVEAL_KEY } from './services/storageService.jsx';
-
 const AUDIO_SRC = '/assets/baby-voice.wav';
 
 const Confetti = ({ active }) => {
@@ -98,44 +96,22 @@ const PersistentMiniPlayer = ({ src, audioRef }) => {
 };
 
 export const App = () => {
-  const [hasRevealed, setHasRevealed] = React.useState(() => {
-    try {
-      return localStorage.getItem(REVEAL_KEY) === '1';
-    } catch {
-      return false;
-    }
-  });
   const [bursting, setBursting] = React.useState(false);
   const [showAudio, setShowAudio] = React.useState(false);
   const [overlayActive, setOverlayActive] = React.useState(false);
   const [autoPlay, setAutoPlay] = React.useState(false);
-  const [heroFading, setHeroFading] = React.useState(false);
   const [revealPlaying, setRevealPlaying] = React.useState(false);
 
   const persistentAudioRef = React.useRef(null);
   const revealAudioRef = React.useRef(null);
 
-  React.useEffect(() => {
-    if (!hasRevealed) document.body.classList.add('splash-locked');
-    else document.body.classList.remove('splash-locked');
-  }, [hasRevealed]);
-
-  const triggerReveal = (firstTime = true) => {
+  const triggerReveal = () => {
     setOverlayActive(true);
     setBursting(true);
-    if (firstTime) setHeroFading(true);
     setTimeout(() => {
       setShowAudio(true);
       setAutoPlay(true);
     }, 700);
-    if (firstTime) {
-      setTimeout(() => {
-        setHasRevealed(true);
-        try {
-          localStorage.setItem(REVEAL_KEY, '1');
-        } catch {}
-      }, 1600);
-    }
   };
 
   const closeReveal = () => {
@@ -148,7 +124,7 @@ export const App = () => {
 
   React.useEffect(() => {
     const onKey = (e) => {
-      if (e.key === 'Escape' && showAudio && hasRevealed) closeReveal();
+      if (e.key === 'Escape' && showAudio) closeReveal();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -173,107 +149,66 @@ export const App = () => {
     <>
       <PetalsLayer />
 
-      {!hasRevealed && (
-        <section className="stage" aria-label="Karşılama">
-          <FloatingField />
-          <div className={`hero ${heroFading ? 'fading' : ''}`}>
-            <div className="hero-eyebrow">Anneler Günü'ne özel · 2026</div>
-            <h1 className="hero-title">
-              Annelik sana çok yakışacak, <span className="amp">canım ablam.</span>
-            </h1>
-            <p className="hero-sub">
-              Sevgili Merve, bu sayfa minik prensesinin sana ilk fısıltısını,
-              ona bırakacağın anıları saklayacak.
-            </p>
-
-            <div
-              className="gift-wrap"
-              onClick={() => triggerReveal(true)}
-              role="button"
-              aria-label="Hediyeyi aç"
-              tabIndex={0}
-              onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && triggerReveal(true)}
-            >
-              <div className="gift-glow" />
-              <HeartGift size={300} />
-              <div className="gift-tap-hint">↑ tıkla, sürpriz seni bekliyor</div>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {hasRevealed && (
-        <>
-          <header className="stage" style={{ minHeight: '70vh' }}>
-            <FloatingField />
-            <div className="hero" style={{ minHeight: '70vh', paddingBottom: 40 }}>
-              <div className="hero-eyebrow">Anneler Günü'ne özel · 2026</div>
-              <h1 className="hero-title">
-                Annelik sana çok yakışacak, <span className="amp">canım ablam.</span>
-              </h1>
-              <p className="hero-sub">
-                Sevgili Merve, bu sayfa minik prensesinin sana ilk fısıltısını,
-                ona bırakacağın anıları saklayacak.
-              </p>
-              <div className="scroll-cue">aşağı kaydır ↓</div>
-            </div>
-          </header>
-
-          <section className="section photos-section" aria-label="Fotoğraflar">
-            <div className="section-eyebrow">küçük anılar</div>
-            <h2 className="section-title">Birlikte biriktireceğimiz kareler</h2>
-            <p className="section-sub">
-              Minik prensesin büyürken hatırlamak isteyeceği anları buraya bırakabilirsin.
-              Sürükle-bırak ile fotoğraflar arasında gezin.
-            </p>
-            <PhotoSlider />
-          </section>
-
-          <section className="section notes-section" aria-label="Sevgi notları">
-            <div className="section-eyebrow">sevgi defteri</div>
-            <h2 className="section-title">Sevenlerinden ona ilk satırlar</h2>
-            <p className="section-sub">
-              Aileden ve arkadaşlardan gelen güzel dilekler burada toplanıyor.
-              Sen de bir not bırak; ismin ve sözlerin onunla kalsın.
-            </p>
-            <NotesWall />
-          </section>
-
-          <footer className="footer">
-            sevgiyle yapıldı <span className="footer-heart">♥</span> Merve & minik prenses
-          </footer>
-        </>
-      )}
-
-      {hasRevealed && (
-        <>
-          <button className="gift-sticker visible" onClick={() => triggerReveal(false)} aria-label="Sürprizi yeniden başlat">
-            <HeartGift size={78} />
-          </button>
-          <div className="gift-sticker-tooltip">sürprizi yeniden aç</div>
-        </>
-      )}
-
-      {hasRevealed && (
-        <div className="floating-player visible">
-          <span className="floating-label">prensesin sesi</span>
-          <PersistentMiniPlayer src={AUDIO_SRC} audioRef={persistentAudioRef} />
+      <header className="stage" style={{ minHeight: '70vh' }}>
+        <FloatingField />
+        <div className="hero" style={{ minHeight: '70vh', paddingBottom: 40 }}>
+          <div className="hero-eyebrow">Anneler Günü'ne özel · 2026</div>
+          <h1 className="hero-title">
+            Annelik sana çok yakışacak, <span className="amp">canım ablam.</span>
+          </h1>
+          <p className="hero-sub">
+            Sevgili Merve, bu sayfa minik prensesinin sana ilk fısıltısını,
+            ona bırakacağın anıları saklayacak.
+          </p>
+          <div className="scroll-cue">aşağı kaydır ↓</div>
         </div>
-      )}
+      </header>
+
+      <section className="section photos-section" aria-label="Fotoğraflar">
+        <div className="section-eyebrow">küçük anılar</div>
+        <h2 className="section-title">Birlikte biriktireceğimiz kareler</h2>
+        <p className="section-sub">
+          Minik prensesin büyürken hatırlamak isteyeceği anları buraya bırakabilirsin.
+          Sürükle-bırak ile fotoğraflar arasında gezin.
+        </p>
+        <PhotoSlider />
+      </section>
+
+      <section className="section notes-section" aria-label="Sevgi notları">
+        <div className="section-eyebrow">sevgi defteri</div>
+        <h2 className="section-title">Sevenlerinden ona ilk satırlar</h2>
+        <p className="section-sub">
+          Aileden ve arkadaşlardan gelen güzel dilekler burada toplanıyor.
+          Sen de bir not bırak; ismin ve sözlerin onunla kalsın.
+        </p>
+        <NotesWall />
+      </section>
+
+      <footer className="footer">
+        sevgiyle yapıldı <span className="footer-heart">♥</span> Merve & minik prenses
+      </footer>
+
+      <button className="gift-sticker visible" onClick={triggerReveal} aria-label="Sürprizi aç">
+        <HeartGift size={78} />
+      </button>
+      <div className="gift-sticker-tooltip">sürprizi aç</div>
+
+      <div className="floating-player visible">
+        <span className="floating-label">prensesin sesi</span>
+        <PersistentMiniPlayer src={AUDIO_SRC} audioRef={persistentAudioRef} />
+      </div>
 
       <div
         className={`reveal-overlay ${overlayActive ? 'active' : ''}`}
         onClick={(e) => {
-          if (e.target.classList.contains('reveal-overlay') && hasRevealed) closeReveal();
+          if (e.target.classList.contains('reveal-overlay')) closeReveal();
         }}
       >
         <Confetti active={bursting} />
       </div>
       <div className={`audio-reveal ${showAudio ? 'show' : ''}`}>
         <div className="audio-card">
-          {hasRevealed && (
-            <button className="audio-close" onClick={closeReveal} aria-label="Kapat"><CloseIcon /></button>
-          )}
+          <button className="audio-close" onClick={closeReveal} aria-label="Kapat"><CloseIcon /></button>
           <div className="audio-eyebrow">minik bir fısıltı</div>
           <div className="audio-title">Anne, sana bir merhabam var</div>
           <AudioWaves playing={revealPlaying} />
