@@ -1,0 +1,43 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    match /notes/{noteId} {
+      allow read: if true;
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['id', 'name', 'text', 'createdAt', 'createdBy', 'deletedAt'])
+        && request.resource.data.id == noteId
+        && request.resource.data.name is string
+        && request.resource.data.text is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 60
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 400
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.deletedAt == null;
+      allow update: if signedIn()
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['deletedAt'])
+        && request.resource.data.deletedAt is number;
+      allow delete: if false;
+    }
+
+    match /photos/{photoId} {
+      allow read: if true;
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['id', 'imageUrl', 'storagePath', 'createdAt', 'createdBy', 'deletedAt'])
+        && request.resource.data.id == photoId
+        && request.resource.data.imageUrl is string
+        && request.resource.data.storagePath is string
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.deletedAt == null;
+      allow update: if signedIn()
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['deletedAt'])
+        && request.resource.data.deletedAt is number;
+      allow delete: if false;
+    }
+  }
+}
