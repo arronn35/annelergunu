@@ -10,6 +10,8 @@ export const PhotoSlider = () => {
   const [uploading, setUploading] = React.useState(false);
   const trackRef = React.useRef(null);
   const startX = React.useRef(0);
+  const wheelOffset = React.useRef(0);
+  const wheelTimer = React.useRef(null);
   const inputId = React.useId();
 
   const items = React.useMemo(() => [{ kind: 'add' }, ...photos.map((p, i) => ({ kind: 'photo', ...p, i }))], [photos]);
@@ -17,6 +19,10 @@ export const PhotoSlider = () => {
   React.useEffect(() => {
     setIdx((current) => Math.min(current, Math.max(0, items.length - 1)));
   }, [items.length]);
+
+  React.useEffect(() => () => {
+    if (wheelTimer.current) window.clearTimeout(wheelTimer.current);
+  }, []);
 
   const cardW = () => {
     const w = window.innerWidth;
@@ -27,6 +33,30 @@ export const PhotoSlider = () => {
   const goTo = (i) => {
     const max = items.length - 1;
     setIdx(Math.max(0, Math.min(max, i)));
+  };
+
+  const settleWheel = () => {
+    const threshold = cardW() * 0.18;
+    if (wheelOffset.current > threshold) goTo(idx + 1);
+    else if (wheelOffset.current < -threshold) goTo(idx - 1);
+    wheelOffset.current = 0;
+    setDragOffset(0);
+    setDragging(false);
+  };
+
+  const onWheel = (e) => {
+    if (items.length <= 1 || e.target.closest('button, label, input, .add-card')) return;
+    const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+    if (Math.abs(delta) < 1) return;
+
+    e.preventDefault();
+    setDragging(true);
+    wheelOffset.current += delta;
+    const maxPreview = cardW() * 0.45;
+    setDragOffset(Math.max(-maxPreview, Math.min(maxPreview, -wheelOffset.current)));
+
+    if (wheelTimer.current) window.clearTimeout(wheelTimer.current);
+    wheelTimer.current = window.setTimeout(settleWheel, 120);
   };
 
   const onPointerDown = (e) => {
@@ -79,6 +109,7 @@ export const PhotoSlider = () => {
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
         onPointerLeave={onPointerUp}
+        onWheel={onWheel}
       >
         <div
           ref={trackRef}

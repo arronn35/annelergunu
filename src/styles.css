@@ -520,6 +520,8 @@
     margin: 0 -24px;
     cursor: grab;
     user-select: none;
+    overscroll-behavior-x: contain;
+    touch-action: pan-y;
   }
   .slider-viewport:active { cursor: grabbing; }
   .slider-track {
