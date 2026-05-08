@@ -528,8 +528,11 @@
     display: flex;
     gap: 24px;
     padding: 0 max(24px, calc(50vw - 280px));
-    transition: transform 0.4s cubic-bezier(.2,.9,.3,1);
+    transform: translate3d(0, 0, 0);
+    transition: transform 0.34s cubic-bezier(.22, .75, .2, 1);
     will-change: transform;
+    backface-visibility: hidden;
+    contain: layout paint;
   }
   .slider-track.dragging { transition: none; }
   .photo-input {
@@ -548,7 +551,10 @@
     background: linear-gradient(135deg, #FFE8EE, #FFD6E2);
     position: relative;
     box-shadow: 0 20px 50px rgba(216, 27, 96, 0.18), 0 6px 14px rgba(216, 27, 96, 0.1);
-    transition: transform 0.5s cubic-bezier(.2,.9,.3,1);
+    transform: translateZ(0);
+    transition: transform 0.32s cubic-bezier(.22, .75, .2, 1), box-shadow 0.32s ease;
+    will-change: transform;
+    backface-visibility: hidden;
   }
   .photo-card.is-active { transform: scale(1.04); box-shadow: 0 30px 70px rgba(216, 27, 96, 0.28); }
   .photo-card img {

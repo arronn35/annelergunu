@@ -6,12 +6,13 @@ export const PhotoSlider = () => {
   const { photos, addPhotoFiles, removePhoto } = usePhotosData();
   const [idx, setIdx] = React.useState(0);
   const [dragging, setDragging] = React.useState(false);
-  const [dragOffset, setDragOffset] = React.useState(0);
   const [uploading, setUploading] = React.useState(false);
   const trackRef = React.useRef(null);
   const startX = React.useRef(0);
+  const dragOffset = React.useRef(0);
   const wheelOffset = React.useRef(0);
   const wheelTimer = React.useRef(null);
+  const cardWidth = React.useRef(320);
   const inputId = React.useId();
 
   const items = React.useMemo(() => [{ kind: 'add' }, ...photos.map((p, i) => ({ kind: 'photo', ...p, i }))], [photos]);
@@ -20,14 +21,22 @@ export const PhotoSlider = () => {
     setIdx((current) => Math.min(current, Math.max(0, items.length - 1)));
   }, [items.length]);
 
-  React.useEffect(() => () => {
-    if (wheelTimer.current) window.clearTimeout(wheelTimer.current);
+  React.useEffect(() => {
+    const measure = () => {
+      const w = window.innerWidth;
+      cardWidth.current = w < 640 ? w * 0.78 + 24 : Math.min(460, Math.max(260, w * 0.36)) + 24;
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => {
+      window.removeEventListener('resize', measure);
+      if (wheelTimer.current) window.clearTimeout(wheelTimer.current);
+    };
   }, []);
 
-  const cardW = () => {
-    const w = window.innerWidth;
-    if (w < 640) return w * 0.78 + 24;
-    return Math.min(460, Math.max(260, w * 0.36)) + 24;
+  const setTrackTransform = (offset = 0) => {
+    if (!trackRef.current) return;
+    trackRef.current.style.transform = `translate3d(${-idx * cardWidth.current + offset}px, 0, 0)`;
   };
 
   const goTo = (i) => {
@@ -35,12 +44,17 @@ export const PhotoSlider = () => {
     setIdx(Math.max(0, Math.min(max, i)));
   };
 
+  React.useEffect(() => {
+    dragOffset.current = 0;
+    setTrackTransform(0);
+  }, [idx, items.length]);
+
   const settleWheel = () => {
-    const threshold = cardW() * 0.18;
+    const threshold = cardWidth.current * 0.18;
     if (wheelOffset.current > threshold) goTo(idx + 1);
     else if (wheelOffset.current < -threshold) goTo(idx - 1);
+    else setTrackTransform(0);
     wheelOffset.current = 0;
-    setDragOffset(0);
     setDragging(false);
   };
 
@@ -52,8 +66,8 @@ export const PhotoSlider = () => {
     e.preventDefault();
     setDragging(true);
     wheelOffset.current += delta;
-    const maxPreview = cardW() * 0.45;
-    setDragOffset(Math.max(-maxPreview, Math.min(maxPreview, -wheelOffset.current)));
+    const maxPreview = cardWidth.current * 0.45;
+    setTrackTransform(Math.max(-maxPreview, Math.min(maxPreview, -wheelOffset.current)));
 
     if (wheelTimer.current) window.clearTimeout(wheelTimer.current);
     wheelTimer.current = window.setTimeout(settleWheel, 120);
@@ -69,15 +83,17 @@ export const PhotoSlider = () => {
   const onPointerMove = (e) => {
     if (!dragging) return;
     const x = e.clientX || (e.touches && e.touches[0].clientX) || 0;
-    setDragOffset(x - startX.current);
+    dragOffset.current = x - startX.current;
+    setTrackTransform(dragOffset.current);
   };
 
   const onPointerUp = () => {
     if (!dragging) return;
-    const threshold = cardW() * 0.25;
-    if (dragOffset > threshold) goTo(idx - 1);
-    else if (dragOffset < -threshold) goTo(idx + 1);
-    setDragOffset(0);
+    const threshold = cardWidth.current * 0.25;
+    if (dragOffset.current > threshold) goTo(idx - 1);
+    else if (dragOffset.current < -threshold) goTo(idx + 1);
+    else setTrackTransform(0);
+    dragOffset.current = 0;
     setDragging(false);
   };
 
@@ -96,8 +112,6 @@ export const PhotoSlider = () => {
     e.target.value = '';
   };
 
-  const translate = -idx * cardW() + dragOffset;
-
   return (
     <div className="photos-section">
       <input id={inputId} className="photo-input" type="file" accept="image/*" multiple onChange={onPick} />
@@ -114,7 +128,6 @@ export const PhotoSlider = () => {
         <div
           ref={trackRef}
           className={`slider-track ${dragging ? 'dragging' : ''}`}
-          style={{ transform: `translateX(${translate}px)` }}
         >
           {items.map((it, i) => {
             const active = i === idx;
