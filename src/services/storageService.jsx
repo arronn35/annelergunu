@@ -9,7 +9,7 @@ import {
   setDoc,
   updateDoc,
 } from 'firebase/firestore';
-import { getDownloadURL, ref, uploadString, uploadBytes } from 'firebase/storage';
+import { getDownloadURL, ref, uploadString, uploadBytesResumable } from 'firebase/storage';
 import { authReady, db, firebaseEnabled, storage } from './firebase.js';
 
 export const REVEAL_KEY = 'arven_revealed_v1';
@@ -55,6 +55,20 @@ const enqueue = (op) => {
 };
 
 const safeName = (name = 'photo') => name.replace(/[^\w.-]+/g, '-').slice(0, 80) || 'photo';
+
+const inferImageType = (file) => {
+  if (file.type && file.type.startsWith('image/')) return file.type;
+  const name = file.name.toLowerCase();
+  if (name.endsWith('.png')) return 'image/png';
+  if (name.endsWith('.webp')) return 'image/webp';
+  if (name.endsWith('.gif')) return 'image/gif';
+  if (name.endsWith('.heic')) return 'image/heic';
+  if (name.endsWith('.heif')) return 'image/heif';
+  return 'image/jpeg';
+};
+
+const isImageFile = (file) =>
+  (file.type || '').startsWith('image/') || /\.(avif|gif|heic|heif|jpe?g|png|webp)$/i.test(file.name);
 
 const makeId = (prefix) => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) return `${prefix}-${crypto.randomUUID()}`;
@@ -129,26 +143,32 @@ const createPhotoFromDataUrl = async ({ id = makeId('photo'), dataUrl, name = 'p
   return photoDoc;
 };
 
-const createPhotoFromFile = async (file) => {
+const createPhotoFromFile = async (file, onProgress) => {
   const user = await ensureUser();
   if (!user || !db || !storage) throw new Error('Firebase is not ready.');
   const id = makeId('photo');
   const storagePath = `photos/${id}/${safeName(file.name)}`;
   const photoRef = ref(storage, storagePath);
-  await uploadBytes(photoRef, file, { contentType: file.type || 'image/jpeg' });
+  const uploadTask = uploadBytesResumable(photoRef, file, {
+    contentType: inferImageType(file),
+    cacheControl: 'public,max-age=31536000,immutable',
+  });
+  await new Promise((resolve, reject) => {
+    uploadTask.on(
+      'state_changed',
+      (snapshot) => {
+        if (!snapshot.totalBytes) return;
+        onProgress?.(Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100));
+      },
+      reject,
+      resolve,
+    );
+  });
   const imageUrl = await getDownloadURL(photoRef);
   const photoDoc = { id, imageUrl, storagePath, createdAt: Date.now(), createdBy: user.uid, deletedAt: null };
   await setDoc(doc(db, 'photos', id), photoDoc);
   return photoDoc;
 };
-
-const fileToDataURL = (file) =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
 
 export const flushPendingQueue = async () => {
   if (!firebaseEnabled) return;
@@ -304,6 +324,8 @@ export const usePhotosData = () => {
     localPhotos().map((src, index) => (typeof src === 'string' ? { id: `local-photo-${index}`, src } : src)),
   );
   const [status, setStatus] = React.useState(firebaseEnabled ? 'Firebase bağlanıyor...' : 'Yerel demo modu');
+  const [uploadProgress, setUploadProgress] = React.useState(null);
+  const [uploadError, setUploadError] = React.useState('');
 
   React.useEffect(() => {
     if (!firebaseEnabled || !db) return undefined;
@@ -339,29 +361,26 @@ export const usePhotosData = () => {
   }, []);
 
   const addPhotoFiles = async (files) => {
-    const imageFiles = Array.from(files).filter((file) => file.type.startsWith('image/'));
+    const imageFiles = Array.from(files).filter(isImageFile);
     if (!imageFiles.length) return 0;
     let added = 0;
 
     for (const file of imageFiles) {
       try {
+        setUploadError('');
+        setUploadProgress(0);
         setStatus('Fotoğraf Firebase Storage’a yükleniyor...');
-        const photoDoc = await createPhotoFromFile(file);
+        const photoDoc = await createPhotoFromFile(file, setUploadProgress);
         added += 1;
         if (!firebaseEnabled) throw new Error('Firebase is not ready.');
         setPhotos((prev) => (prev.some((photo) => photo.id === photoDoc.id) ? prev : [...prev, normalizePhoto({ id: photoDoc.id, data: () => photoDoc })]));
         setStatus('Firebase aktif');
-      } catch {
-        const dataUrl = await fileToDataURL(file);
-        const localPhoto = { id: makeId('local-photo'), src: dataUrl, ts: Date.now() };
-        enqueue({ type: 'addPhoto', payload: { id: localPhoto.id, dataUrl, name: file.name, ts: localPhoto.ts } });
-        setPhotos((prev) => {
-          const next = [...prev, localPhoto];
-          writeJson(PHOTOS_KEY, next.map((photo) => photo.src));
-          return next;
-        });
-        setStatus('Bağlantı yok, fotoğraf yerel kuyruğa alındı');
-        added += 1;
+      } catch (error) {
+        console.warn('Photo upload failed.', error);
+        setUploadError('Fotoğraf yüklenemedi. Bağlantını kontrol edip tekrar dene.');
+        setStatus('Fotoğraf yüklenemedi');
+      } finally {
+        setUploadProgress(null);
       }
     }
 
@@ -384,5 +403,5 @@ export const usePhotosData = () => {
     }
   };
 
-  return { photos, addPhotoFiles, removePhoto, status };
+  return { photos, addPhotoFiles, removePhoto, status, uploadError, uploadProgress };
 };

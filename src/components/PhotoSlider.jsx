@@ -3,11 +3,12 @@ import { ChevronLeft, ChevronRight, PlusIcon, TrashIcon } from './Svgs.jsx';
 import { usePhotosData } from '../services/storageService.jsx';
 
 export const PhotoSlider = () => {
-  const { photos, addPhotoFiles, removePhoto } = usePhotosData();
+  const { photos, addPhotoFiles, removePhoto, uploadError, uploadProgress } = usePhotosData();
   const [idx, setIdx] = React.useState(0);
   const [dragging, setDragging] = React.useState(false);
   const [uploading, setUploading] = React.useState(false);
   const trackRef = React.useRef(null);
+  const idxRef = React.useRef(0);
   const startX = React.useRef(0);
   const dragOffset = React.useRef(0);
   const wheelOffset = React.useRef(0);
@@ -36,7 +37,7 @@ export const PhotoSlider = () => {
 
   const setTrackTransform = (offset = 0) => {
     if (!trackRef.current) return;
-    trackRef.current.style.transform = `translate3d(${-idx * cardWidth.current + offset}px, 0, 0)`;
+    trackRef.current.style.transform = `translate3d(${-idxRef.current * cardWidth.current + offset}px, 0, 0)`;
   };
 
   const goTo = (i) => {
@@ -45,6 +46,7 @@ export const PhotoSlider = () => {
   };
 
   React.useEffect(() => {
+    idxRef.current = idx;
     dragOffset.current = 0;
     setTrackTransform(0);
   }, [idx, items.length]);
@@ -115,7 +117,12 @@ export const PhotoSlider = () => {
   return (
     <div className="photos-section">
       <input id={inputId} className="photo-input" type="file" accept="image/*" multiple onChange={onPick} />
-      {uploading && <div className="data-status">Fotoğraf yükleniyor...</div>}
+      {uploading && (
+        <div className="data-status">
+          Fotoğraf yükleniyor{uploadProgress !== null ? `... %${uploadProgress}` : '...'}
+        </div>
+      )}
+      {uploadError && <div className="data-status error">{uploadError}</div>}
       <div
         className="slider-viewport"
         onPointerDown={onPointerDown}
@@ -140,9 +147,21 @@ export const PhotoSlider = () => {
                 </label>
               );
             }
+            const shouldLoadImage = Math.abs(i - idx) <= 3;
             return (
               <div key={it.id} className={`photo-card ${active ? 'is-active' : ''}`}>
-                <img src={it.src} alt={`Anı ${it.i + 1}`} draggable={false} />
+                {shouldLoadImage ? (
+                  <img
+                    src={it.src}
+                    alt={`Anı ${it.i + 1}`}
+                    draggable={false}
+                    loading={active ? 'eager' : 'lazy'}
+                    decoding="async"
+                    fetchPriority={active ? 'high' : 'auto'}
+                  />
+                ) : (
+                  <div className="photo-placeholder" aria-hidden="true" />
+                )}
                 <button className="photo-delete" onClick={(e) => { e.stopPropagation(); removePhoto(it.id); }} aria-label="Kaldır">
                   <TrashIcon />
                 </button>
