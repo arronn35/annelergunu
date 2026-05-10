@@ -16,7 +16,10 @@ export const PhotoSlider = () => {
   const slideStep = React.useRef(320);
   const inputId = React.useId();
 
-  const items = React.useMemo(() => [{ kind: 'add' }, ...photos.map((p, i) => ({ kind: 'photo', ...p, i }))], [photos]);
+  const items = React.useMemo(() => {
+    const photoItems = photos.map((p, i) => ({ kind: 'photo', ...p, i }));
+    return photos.length ? [...photoItems, { kind: 'add' }] : [{ kind: 'add' }];
+  }, [photos]);
 
   React.useEffect(() => {
     setIdx((current) => Math.min(current, Math.max(0, items.length - 1)));
@@ -110,7 +113,7 @@ export const PhotoSlider = () => {
     setUploading(true);
     try {
       const added = await addPhotoFiles(files);
-      if (added) setIdx(items.length + added - 1);
+      if (added) setIdx(Math.max(0, photos.length + added - 1));
     } finally {
       setUploading(false);
     }
