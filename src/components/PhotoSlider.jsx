@@ -148,12 +148,20 @@ export const PhotoSlider = () => {
               );
             }
             const shouldLoadImage = Math.abs(i - idx) <= 3;
+            const aspectRatio = it.width && it.height ? `${it.width} / ${it.height}` : undefined;
             return (
-              <div key={it.id} className={`photo-card ${active ? 'is-active' : ''}`}>
+              <div
+                key={it.id}
+                className={`photo-card ${active ? 'is-active' : ''}`}
+                style={aspectRatio ? { '--photo-ratio': aspectRatio } : undefined}
+              >
                 {shouldLoadImage ? (
                   <img
                     src={it.src}
                     alt={`Anı ${it.i + 1}`}
+                    onError={(e) => {
+                      if (it.originalUrl && e.currentTarget.src !== it.originalUrl) e.currentTarget.src = it.originalUrl;
+                    }}
                     draggable={false}
                     loading={active ? 'eager' : 'lazy'}
                     decoding="async"

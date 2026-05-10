@@ -70,6 +70,73 @@ const inferImageType = (file) => {
 const isImageFile = (file) =>
   (file.type || '').startsWith('image/') || /\.(avif|gif|heic|heif|jpe?g|png|webp)$/i.test(file.name);
 
+const isHeicFile = (file) =>
+  /hei[cf]$/i.test(file.name) || ['image/heic', 'image/heif'].includes((file.type || '').toLowerCase());
+
+const extensionlessName = (name = 'photo') => name.replace(/\.[^.]+$/, '') || 'photo';
+
+const uploadBlobResumable = (storagePath, blob, contentType, onProgress, progressStart = 0, progressSpan = 100) => {
+  const photoRef = ref(storage, storagePath);
+  const uploadTask = uploadBytesResumable(photoRef, blob, {
+    contentType,
+    cacheControl: 'public,max-age=31536000,immutable',
+  });
+  return new Promise((resolve, reject) => {
+    uploadTask.on(
+      'state_changed',
+      (snapshot) => {
+        if (!snapshot.totalBytes) return;
+        const pct = snapshot.bytesTransferred / snapshot.totalBytes;
+        onProgress?.(Math.min(99, Math.round(progressStart + pct * progressSpan)));
+      },
+      reject,
+      async () => {
+        try {
+          resolve(await getDownloadURL(photoRef));
+        } catch (error) {
+          reject(error);
+        }
+      },
+    );
+  });
+};
+
+const getImageSize = (blob) =>
+  new Promise((resolve) => {
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve({ width: img.naturalWidth || null, height: img.naturalHeight || null });
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve({ width: null, height: null });
+    };
+    img.src = url;
+  });
+
+const createDisplayAsset = async (file) => {
+  if (!isHeicFile(file)) {
+    return {
+      blob: file,
+      contentType: inferImageType(file),
+      fileName: safeName(file.name),
+      converted: false,
+    };
+  }
+
+  const { default: heic2any } = await import('heic2any');
+  const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.96 });
+  const blob = Array.isArray(converted) ? converted[0] : converted;
+  return {
+    blob,
+    contentType: 'image/jpeg',
+    fileName: `${safeName(extensionlessName(file.name))}.jpg`,
+    converted: true,
+  };
+};
+
 const makeId = (prefix) => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) return `${prefix}-${crypto.randomUUID()}`;
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -95,8 +162,12 @@ const normalizePhoto = (docSnap) => {
   const data = docSnap.data();
   return {
     id: docSnap.id,
-    src: data.imageUrl,
-    storagePath: data.storagePath,
+    src: data.displayUrl || data.imageUrl,
+    storagePath: data.displayStoragePath || data.storagePath,
+    originalUrl: data.originalUrl || data.imageUrl,
+    originalStoragePath: data.originalStoragePath || data.storagePath,
+    width: data.width || null,
+    height: data.height || null,
     ts: data.createdAt || Date.now(),
   };
 };
@@ -147,25 +218,35 @@ const createPhotoFromFile = async (file, onProgress) => {
   const user = await ensureUser();
   if (!user || !db || !storage) throw new Error('Firebase is not ready.');
   const id = makeId('photo');
-  const storagePath = `photos/${id}/${safeName(file.name)}`;
-  const photoRef = ref(storage, storagePath);
-  const uploadTask = uploadBytesResumable(photoRef, file, {
-    contentType: inferImageType(file),
-    cacheControl: 'public,max-age=31536000,immutable',
-  });
-  await new Promise((resolve, reject) => {
-    uploadTask.on(
-      'state_changed',
-      (snapshot) => {
-        if (!snapshot.totalBytes) return;
-        onProgress?.(Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100));
-      },
-      reject,
-      resolve,
-    );
-  });
-  const imageUrl = await getDownloadURL(photoRef);
-  const photoDoc = { id, imageUrl, storagePath, createdAt: Date.now(), createdBy: user.uid, deletedAt: null };
+  const originalStoragePath = `photos/${id}/original-${safeName(file.name)}`;
+  const displayAsset = await createDisplayAsset(file);
+  const displayStoragePath = displayAsset.converted
+    ? `photos/${id}/display-${displayAsset.fileName}`
+    : originalStoragePath;
+  const originalContentType = inferImageType(file);
+  const originalUrl = await uploadBlobResumable(originalStoragePath, file, originalContentType, onProgress, 0, displayAsset.converted ? 65 : 96);
+  const displayUrl = displayAsset.converted
+    ? await uploadBlobResumable(displayStoragePath, displayAsset.blob, displayAsset.contentType, onProgress, 65, 31)
+    : originalUrl;
+  const { width, height } = await getImageSize(displayAsset.blob);
+  onProgress?.(100);
+  const photoDoc = {
+    id,
+    imageUrl: displayUrl,
+    storagePath: displayStoragePath,
+    displayUrl,
+    displayStoragePath,
+    originalUrl,
+    originalStoragePath,
+    originalContentType,
+    displayContentType: displayAsset.contentType,
+    originalSize: file.size,
+    width,
+    height,
+    createdAt: Date.now(),
+    createdBy: user.uid,
+    deletedAt: null,
+  };
   await setDoc(doc(db, 'photos', id), photoDoc);
   return photoDoc;
 };

@@ -28,10 +28,18 @@ service cloud.firestore {
     match /photos/{photoId} {
       allow read: if true;
       allow create: if signedIn()
-        && request.resource.data.keys().hasOnly(['id', 'imageUrl', 'storagePath', 'createdAt', 'createdBy', 'deletedAt'])
+        && request.resource.data.keys().hasOnly([
+          'id', 'imageUrl', 'storagePath', 'displayUrl', 'displayStoragePath',
+          'originalUrl', 'originalStoragePath', 'originalContentType', 'displayContentType',
+          'originalSize', 'width', 'height', 'createdAt', 'createdBy', 'deletedAt'
+        ])
         && request.resource.data.id == photoId
         && request.resource.data.imageUrl is string
         && request.resource.data.storagePath is string
+        && request.resource.data.displayUrl is string
+        && request.resource.data.displayStoragePath is string
+        && request.resource.data.originalUrl is string
+        && request.resource.data.originalStoragePath is string
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.deletedAt == null;
       allow update: if signedIn()

@@ -545,7 +545,8 @@
   }
   .photo-card {
     flex: 0 0 clamp(260px, 36vw, 460px);
-    aspect-ratio: 3 / 4;
+    aspect-ratio: var(--photo-ratio, 3 / 4);
+    max-height: min(74vh, 660px);
     border-radius: 24px;
     overflow: hidden;
     background: linear-gradient(135deg, #FFF5F8, #FFE8EE);
