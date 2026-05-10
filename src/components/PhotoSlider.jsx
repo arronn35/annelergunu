@@ -13,7 +13,7 @@ export const PhotoSlider = () => {
   const dragOffset = React.useRef(0);
   const wheelOffset = React.useRef(0);
   const wheelTimer = React.useRef(null);
-  const cardWidth = React.useRef(320);
+  const slideStep = React.useRef(320);
   const inputId = React.useId();
 
   const items = React.useMemo(() => [{ kind: 'add' }, ...photos.map((p, i) => ({ kind: 'photo', ...p, i }))], [photos]);
@@ -24,8 +24,15 @@ export const PhotoSlider = () => {
 
   React.useEffect(() => {
     const measure = () => {
-      const w = window.innerWidth;
-      cardWidth.current = w < 640 ? w * 0.78 + 24 : Math.min(460, Math.max(260, w * 0.36)) + 24;
+      const cards = trackRef.current?.querySelectorAll('.photo-card');
+      if (cards && cards.length > 1) {
+        slideStep.current = cards[1].offsetLeft - cards[0].offsetLeft;
+      } else if (cards && cards.length === 1) {
+        slideStep.current = cards[0].getBoundingClientRect().width + 24;
+      } else {
+        slideStep.current = Math.min(window.innerWidth * 0.86, 980) + 24;
+      }
+      setTrackTransform(0);
     };
     measure();
     window.addEventListener('resize', measure);
@@ -37,7 +44,7 @@ export const PhotoSlider = () => {
 
   const setTrackTransform = (offset = 0) => {
     if (!trackRef.current) return;
-    trackRef.current.style.transform = `translate3d(${-idxRef.current * cardWidth.current + offset}px, 0, 0)`;
+    trackRef.current.style.transform = `translate3d(${-idxRef.current * slideStep.current + offset}px, 0, 0)`;
   };
 
   const goTo = (i) => {
@@ -52,7 +59,7 @@ export const PhotoSlider = () => {
   }, [idx, items.length]);
 
   const settleWheel = () => {
-    const threshold = cardWidth.current * 0.18;
+    const threshold = slideStep.current * 0.18;
     if (wheelOffset.current > threshold) goTo(idx + 1);
     else if (wheelOffset.current < -threshold) goTo(idx - 1);
     else setTrackTransform(0);
@@ -68,7 +75,7 @@ export const PhotoSlider = () => {
     e.preventDefault();
     setDragging(true);
     wheelOffset.current += delta;
-    const maxPreview = cardWidth.current * 0.45;
+    const maxPreview = slideStep.current * 0.45;
     setTrackTransform(Math.max(-maxPreview, Math.min(maxPreview, -wheelOffset.current)));
 
     if (wheelTimer.current) window.clearTimeout(wheelTimer.current);
@@ -91,7 +98,7 @@ export const PhotoSlider = () => {
 
   const onPointerUp = () => {
     if (!dragging) return;
-    const threshold = cardWidth.current * 0.25;
+    const threshold = slideStep.current * 0.25;
     if (dragOffset.current > threshold) goTo(idx - 1);
     else if (dragOffset.current < -threshold) goTo(idx + 1);
     else setTrackTransform(0);
@@ -147,13 +154,11 @@ export const PhotoSlider = () => {
                 </label>
               );
             }
-            const shouldLoadImage = Math.abs(i - idx) <= 3;
-            const aspectRatio = it.width && it.height ? `${it.width} / ${it.height}` : undefined;
+            const shouldLoadImage = Math.abs(i - idx) <= 4;
             return (
               <div
                 key={it.id}
                 className={`photo-card ${active ? 'is-active' : ''}`}
-                style={aspectRatio ? { '--photo-ratio': aspectRatio } : undefined}
               >
                 {shouldLoadImage ? (
                   <img

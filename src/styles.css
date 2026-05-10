@@ -516,8 +516,8 @@
   .photos-section { padding-bottom: 60px; }
   .slider-viewport {
     overflow: hidden;
-    padding: 30px 0;
-    margin: 0 -24px;
+    padding: 34px 0;
+    margin: 0 calc(50% - 50vw);
     cursor: grab;
     user-select: none;
     overscroll-behavior-x: contain;
@@ -527,7 +527,7 @@
   .slider-track {
     display: flex;
     gap: 24px;
-    padding: 0 max(24px, calc(50vw - 280px));
+    padding: 0 max(18px, calc(50vw - min(43vw, 520px)));
     transform: translate3d(0, 0, 0);
     transition: transform 0.34s cubic-bezier(.22, .75, .2, 1);
     will-change: transform;
@@ -544,10 +544,9 @@
     pointer-events: none;
   }
   .photo-card {
-    flex: 0 0 clamp(260px, 36vw, 460px);
-    aspect-ratio: var(--photo-ratio, 3 / 4);
-    max-height: min(74vh, 660px);
-    border-radius: 24px;
+    flex: 0 0 min(86vw, 1040px);
+    height: clamp(360px, 68vh, 760px);
+    border-radius: 18px;
     overflow: hidden;
     background: linear-gradient(135deg, #FFF5F8, #FFE8EE);
     position: relative;
@@ -560,6 +559,7 @@
   .photo-card.is-active { transform: scale(1.04); box-shadow: 0 30px 70px rgba(216, 27, 96, 0.28); }
   .photo-card img {
     width: 100%; height: 100%; object-fit: contain;
+    display: block;
     pointer-events: none;
   }
   .photo-placeholder {
